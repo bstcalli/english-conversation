@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2a37">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>상황별 영어회화</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="mtop" id="mtop"><button id="menuBtn" aria-label="메뉴">☰</button><span class="mtop-title">상황별 영어회화</span><span class="mtop-now" id="mtopNow"></span></header>
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">Aa</div>
+      <div>
+        <div class="brand-title">상황별 영어회화</div>
+        <div class="brand-sub">기초부터 고급까지 · 원어민 발음</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <button data-view="home" class="on">🏠 처음 화면</button>
+      <button data-view="levels">📶 레벨별 보기</button>
+      <button data-view="themes">🧭 상황별 보기</button>
+      <button data-view="describe">🖼️ 묘사 연습</button>
+      <button data-view="reading">📰 독해 연습</button>
+      <button data-view="sents">💯 천 문장 구문</button>
+      <button data-view="writing">✍️ 작문 연습</button>
+      <button data-view="grammar">📐 문법</button>
+      <button data-view="words">🔤 단어장</button>
+      <button data-view="idioms">📚 숙어 사전</button>
+      <button data-view="review">⭐ 복습함</button>
+    </nav>
+    <div class="side-list" id="sideList"></div>
+  </aside>
+
+  <main class="main" id="main"></main>
+
+  <div class="player-bar" id="playerBar">
+    <div class="pb-group">
+      <span class="pb-label">속도</span>
+      <div class="seg" id="speedSeg">
+        <button data-rate="0.6">0.6</button>
+        <button data-rate="0.8">0.8</button>
+        <button data-rate="1" class="on">1.0</button>
+        <button data-rate="1.2">1.2</button>
+      </div>
+    </div>
+    <div class="pb-group">
+      <label class="tg"><input type="checkbox" id="optKo" checked><span>한국어</span></label>
+      <label class="tg"><input type="checkbox" id="optHideEn"><span>영어 가리기</span></label>
+      <label class="tg"><input type="checkbox" id="optExp"><span>해설 펼치기</span></label>
+    </div>
+    <div class="pb-now" id="pbNow"></div>
+  </div>
+
+  <div class="pop" id="pop" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
