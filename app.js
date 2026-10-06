@@ -480,7 +480,10 @@ function idiomCard(it) {
     <div class="idiom-ko">${esc(it.ko)}</div>
     ${it.ex ? `<div class="ex"><button class="play" data-idplay="${esc(it.id)}:1">▶</button><div><div class="ex-en">${esc(it.ex)}</div><div class="ex-ko">${esc(it.exKo)}</div></div></div>` : ''}
     ${it.ex2 ? `<div class="ex"><button class="play" data-idplay="${esc(it.id)}:2">▶</button><div><div class="ex-en">${esc(it.ex2)}</div><div class="ex-ko">${esc(it.ex2Ko)}</div></div></div>` : ''}
+    ${(it.moreExamples || []).map((e, i) => `<div class="ex"><button class="play" data-idplay="${esc(it.id)}:m${i}">▶</button><div><div class="ex-en">${esc(e.en)}</div><div class="ex-ko">${esc(e.ko || '')}</div></div></div>`).join('')}
     ${it.note ? `<div class="note">💡 ${esc(it.note)}</div>` : ''}
+    ${(it.dialogue || []).length ? `<div class="gmore-h" style="margin-top:8px">💬 대화 속 숙어 <button class="tool" data-iddlg="${esc(it.id)}">▶ 대화 듣기</button></div>
+      <div class="gdlg">${it.dialogue.map((x, xi) => `<div class="gdl ${x.s === 'B' ? 'b' : ''}" data-iddl="${esc(it.id)}-${xi}"><span class="gwho">${esc(x.s)}</span><div class="ex"><button class="play" data-idplay="${esc(it.id)}:d${xi}">▶</button><div><div class="ex-en">${markIdioms(x.en)}</div><div class="ex-ko">${esc(x.ko || '')}</div></div></div></div>`).join('')}</div>` : ''}
     ${lessons.length ? `<div class="links">📍 나오는 대화: ${lessons.map((l) => `<a data-open="${l.id}">${esc(l.title)}</a>`).join('')}</div>` : ''}
   </div>`;
 }
@@ -1876,13 +1879,15 @@ document.addEventListener('click', async (e) => {
   if (ds.myrec !== undefined && l) { const u = recordings[`L:${l.id}:d${ds.myrec}`]; if (u) { stopAll(); playUrl(u); } return; }
   if (ds.rpmy !== undefined && l) { const u = recordings[`RP:${l.id}:${ds.rpmy}`]; if (u) { stopAll(); playUrl(u); } return; }
   if (ds.rprole) { RP.role = ds.rprole; RP.running = false; stopAll(); rerender(); return; }
+  if (ds.iddlg) { const it = D.idioms.find((x) => x.id === ds.iddlg); if (it) playSequence(it.dialogue.map((x, xi) => ({ ...x, row: () => document.querySelector(`[data-iddl="${CSS.escape(it.id + '-' + xi)}"]`) }))); return; }
   if (ds.idplay) {
     const [id, which] = ds.idplay.split(':');
     const it = D.idioms.find((x) => x.id === id); if (!it) return;
     stopAll();
     if (which === 'h') playClip(it.audio, it.say || it.en);
     else if (which === '1') playClip(it.exAudio, it.ex);
-    else playClip(it.ex2Audio, it.ex2);
+    else if (which === '2') playClip(it.ex2Audio, it.ex2);
+    else { const arr = which[0] === 'm' ? it.moreExamples : it.dialogue, e = arr && arr[Number(which.slice(1))]; if (e) playClip(e.audio, e.en); }
     return;
   }
   if (ds.rvplay) { const it = reviewItem(ds.rvplay); if (it) { stopAll(); playClip(it.audio, it.say || it.en); } return; }
