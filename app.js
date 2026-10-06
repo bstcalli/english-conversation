@@ -1409,6 +1409,10 @@ function sjDetail(it) {
   return `<div class="sjd">
     ${it.literal ? `<div class="ex"><button class="play" data-sjp="${esc(it.id)}:lit">▶</button><div><span class="rp-hint">글자 그대로</span> <span class="ex-en">${esc(it.literal)}</span></div></div>` : ''}
     <div class="sj-explain"><div class="ex"><button class="play" data-sjp="${esc(it.id)}:exp">▶</button><div><div class="ex-en">${esc(it.explain)}</div><div class="ex-ko">${esc(it.explainKo || '')}</div></div></div></div>
+    ${(it.explainBreakdown || []).length ? `<div class="sj-notes"><div class="gmore-h">📖 영어 설명 해설 — 한 문장씩</div>
+      ${it.explainBreakdown.map((x, i) => `<div class="ex"><button class="play" data-sjp="${esc(it.id)}:bk${i}">▶</button><div><div class="ex-en">${esc(x.en)}</div><div class="ex-ko">${esc(x.ko || '')}</div>${x.note ? `<div class="note">💡 ${esc(x.note)}</div>` : ''}</div></div>`).join('')}
+      ${(it.explainVocab || []).length ? `<div class="gmore-h" style="margin-top:6px">🔤 설명에 나온 핵심 표현</div>${it.explainVocab.map((x, i) => `<div class="ex"><button class="play" data-sjp="${esc(it.id)}:vc${i}">▶</button><div><span class="ex-en">${esc(x.en)}</span> <span class="ex-ko">${esc(x.ko || '')}</span>${x.note ? `<div class="note">${esc(x.note)}</div>` : ''}</div></div>`).join('')}` : ''}
+    </div>` : ''}
     ${(it.equivalent || []).length ? `<div class="gmore-h" style="margin-top:8px">🇬🇧 비슷한 영어 표현</div>${it.equivalent.map((e, i) => `<div class="ex"><button class="play" data-sjp="${esc(it.id)}:eq${i}">▶</button><div><div class="ex-en">${esc(e.en)}</div><div class="ex-ko">${esc(e.ko || '')}${e.note ? ' · ' + esc(e.note) : ''}</div></div></div>`).join('')}` : ''}
     <div class="gmore-h" style="margin-top:8px">💬 이런 상황에 써요</div>
     ${(it.examples || []).map((e, i) => `<div class="ex"><button class="play" data-sjp="${esc(it.id)}:ex${i}">▶</button><div><div class="ex-en">${esc(e.en)}</div><div class="ex-ko">${esc(e.ko || '')}</div></div></div>`).join('')}
@@ -1509,7 +1513,7 @@ function sjPlay(spec) {
   stopAll();
   if (what === 'exp') return playClip(it.audio, it.explain);
   if (what === 'lit') return playClip(it.literalAudio, it.literal);
-  const arr = { eq: it.equivalent, ex: it.examples, mx: it.moreExamples, dl: it.dialogue }[what.slice(0, 2)], e = arr && arr[Number(what.slice(2))];
+  const arr = { eq: it.equivalent, ex: it.examples, mx: it.moreExamples, dl: it.dialogue, bk: it.explainBreakdown, vc: it.explainVocab }[what.slice(0, 2)], e = arr && arr[Number(what.slice(2))];
   if (e) playClip(e.audio, e.en);
 }
 function renderSideSaja() {

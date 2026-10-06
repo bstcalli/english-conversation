@@ -514,3 +514,5 @@ button.card:hover { border-color: var(--accent); }
 .player-bar { min-width: 0; overflow: hidden; }
 
 .gwho { width: auto; min-width: 26px; font-size: 12px; }
+
+.sj-notes { margin-top: 8px; padding: 8px 10px; border-left: 3px solid var(--blue); background: var(--bg); border-radius: 0 10px 10px 0; }
