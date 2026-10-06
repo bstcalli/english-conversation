@@ -200,6 +200,7 @@ function renderSide() {
   if (S.sideMode === 'words') return renderSideWords();
   if (S.sideMode === 'sents' || S.sideMode === 'sunit') return renderSideSents();
   if (S.sideMode === 'desc' || S.sideMode === 'xles') return renderSideDescribe();
+  if (S.sideMode === 'saja') return renderSideSaja();
   if (['gunit', 'rpass', 'wtask'].includes(S.sideMode)) return renderSideCorner();
   const groups = [];
   if (S.sideMode === 'theme') {
@@ -1394,6 +1395,123 @@ function renderSideDescribe() {
   }).join('') || '<div class="rp-hint" style="padding:10px">준비 중</div>';
 }
 
+// ================= 🀄 사자성어 → 영어로 설명하기 =================
+const SJ_CATS = ['노력·성공', '학문·배움', '우정·관계', '말·행동', '지혜·처세', '감정·마음', '상황·형편', '시간·변화'];
+const SJ = { tab: 'list', cat: 'all', q: '', open: new Set(), queue: [], qi: 0, reveal: false, hideKo: false, hint: false, qz: null };
+const jKey = (it) => 'J:' + it.id;
+const jKnown = (it) => !!(store.known || {})[jKey(it)];
+const sjList = () => D.saja.filter((it) => (SJ.cat === 'all' || it.cat === SJ.cat)
+  && (!SJ.q || [it.hangul, it.hanja, it.ko, it.explain, ...(it.equivalent || []).map((e) => e.en)].some((v) => String(v || '').toLowerCase().includes(SJ.q.toLowerCase()))));
+function sjDetail(it) {
+  return `<div class="sjd">
+    ${it.literal ? `<div class="ex"><button class="play" data-sjp="${esc(it.id)}:lit">▶</button><div><span class="rp-hint">글자 그대로</span> <span class="ex-en">${esc(it.literal)}</span></div></div>` : ''}
+    <div class="sj-explain"><div class="ex"><button class="play" data-sjp="${esc(it.id)}:exp">▶</button><div><div class="ex-en">${esc(it.explain)}</div><div class="ex-ko">${esc(it.explainKo || '')}</div></div></div></div>
+    ${(it.equivalent || []).length ? `<div class="gmore-h" style="margin-top:8px">🇬🇧 비슷한 영어 표현</div>${it.equivalent.map((e, i) => `<div class="ex"><button class="play" data-sjp="${esc(it.id)}:eq${i}">▶</button><div><div class="ex-en">${esc(e.en)}</div><div class="ex-ko">${esc(e.ko || '')}${e.note ? ' · ' + esc(e.note) : ''}</div></div></div>`).join('')}` : ''}
+    <div class="gmore-h" style="margin-top:8px">💬 이런 상황에 써요</div>
+    ${(it.examples || []).map((e, i) => `<div class="ex"><button class="play" data-sjp="${esc(it.id)}:ex${i}">▶</button><div><div class="ex-en">${esc(e.en)}</div><div class="ex-ko">${esc(e.ko || '')}</div></div></div>`).join('')}
+    ${(it.keywords || []).length ? `<div class="wstruct">${it.keywords.map((k) => `<span class="chip">🔑 ${esc(k)}</span>`).join(' ')}</div>` : ''}
+    ${it.tip ? `<div class="note" style="margin-top:6px">💡 ${esc(it.tip)}</div>` : ''}
+  </div>`;
+}
+function viewSaja() {
+  const total = D.saja.length, known = D.saja.filter(jKnown).length;
+  const tabs = [['list', '📚 목록'], ['practice', '🗣 영어로 설명하기'], ['quiz', '🧩 퀴즈']];
+  const chips = `<div class="chips">${[['all', '전체'], ...SJ_CATS.filter((c) => D.saja.some((x) => x.cat === c)).map((c) => [c, c])].map(([k, n]) => `<button class="fchip ${SJ.cat === k ? 'on' : ''}" data-sjcat="${esc(k)}">${esc(n)}</button>`).join('')}</div>`;
+  let body = '';
+  if (SJ.tab === 'list') {
+    const list = sjList();
+    body = `<div class="filters"><input class="search" id="sjSearch" placeholder="사자성어·뜻·영어로 검색 (예: 일석이조, birds)" value="${esc(SJ.q)}">${chips}</div>
+      <div class="count">${list.length}개</div>
+      <div class="sjlist">${list.map((it) => { const open = SJ.open.has(it.id); return `<div class="sjrow ${jKnown(it) ? 'known' : ''}">
+        <div class="sjhead" data-sjopen="${esc(it.id)}"><span class="sj-h">${esc(it.hangul)}</span><span class="sj-hj">${esc(it.hanja || '')}</span>
+          <span class="sj-ko">${esc(it.ko)}</span><span class="chip">${esc(it.cat || '')}</span></div>
+        <div class="sjtools"><button class="wknown ${jKnown(it) ? 'on' : ''}" data-wknown="${esc(jKey(it))}">${jKnown(it) ? '✔ 외움' : '외웠어요'}</button><button class="tool" data-sjopen="${esc(it.id)}">${open ? '접기 ▲' : '영어 설명 ▼'}</button></div>
+        ${open ? sjDetail(it) : ''}</div>`; }).join('') || '<div class="empty">찾는 사자성어가 없어요</div>'}</div>`;
+  } else if (SJ.tab === 'practice') {
+    if (!SJ.queue.length) {
+      const pool = sjList();
+      SJ.queue = [...shuffle(pool.filter((x) => !jKnown(x))), ...shuffle(pool.filter(jKnown))].map((x) => x.id); SJ.qi = 0; SJ.reveal = false;
+    }
+    const it = D.saja.find((x) => x.id === SJ.queue[SJ.qi]);
+    store.sjdraft ||= {};
+    const draft = it ? store.sjdraft[it.id] || '' : '';
+    const used = (k) => draft.toLowerCase().includes(String(k).toLowerCase());
+    body = `<div class="filters">${chips}</div>` + (!it ? '<div class="empty">연습할 사자성어가 없어요</div>' : `
+      <div class="fc-count">${SJ.qi + 1} / ${SJ.queue.length} · 안 외운 것부터</div>
+      <div class="rp-stage sj-card"><div class="sj-big">${esc(it.hangul)}</div><div class="sj-hj" style="font-size:20px">${esc(it.hanja || '')}</div>
+        ${SJ.hideKo ? '<div class="rp-hint">뜻 가림</div>' : `<div class="rp-hint" style="margin-top:6px">${esc(it.ko)}</div>`}
+        <div class="lesson-actions" style="justify-content:center">
+          <label class="tg"><input type="checkbox" id="sjHideKo" ${SJ.hideKo ? 'checked' : ''}><span>한국어 뜻 가리기</span></label>
+          <button class="btn ${SJ.hint ? 'on' : ''}" data-sjact="hint">🔑 핵심 단어 힌트</button></div>
+        ${SJ.hint ? `<div class="wstruct" style="justify-content:center">${(it.keywords || []).map((k) => `<span class="chip">${esc(k)}</span>`).join(' ')}</div>` : ''}
+      </div>
+      <p class="sub" style="margin:10px 0 4px">이 사자성어를 외국인 친구에게 설명한다고 생각하고 영어로 써 보거나 말해 보세요.</p>
+      <textarea class="wdraft xdraft" id="sjDraft" spellcheck="false" placeholder="It means ... / You can use it when ...">${esc(draft)}</textarea>
+      <div class="lesson-actions">
+        <button class="btn" data-sjact="rec">🎙 말로 설명하기 (녹음)</button>
+        <button class="btn" data-sjact="myrec" ${recordings['SJ:' + it.id] ? '' : 'disabled'}>▶ 내 녹음</button>
+        <button class="btn primary" data-sjact="reveal">${SJ.reveal ? '모범 설명 숨기기' : '📄 모범 설명 보기'}</button>
+      </div>
+      ${SJ.reveal ? `<div class="point">
+        ${(it.keywords || []).length ? `<div class="rp-hint">핵심 단어 사용: ${it.keywords.filter(used).length} / ${it.keywords.length}</div>
+          <div class="wstruct">${it.keywords.map((k) => `<span class="chip ${used(k) ? 'kw-on' : ''}">${used(k) ? '✔' : '○'} ${esc(k)}</span>`).join(' ')}</div>` : ''}
+        ${sjDetail(it)}</div>
+        <div class="fc-actions"><button class="btn fc-no" data-sjact="again">↺ 다시 볼래요</button><button class="btn fc-yes" data-sjact="ok">✔ 설명할 수 있어요</button></div>` : ''}
+    `);
+  } else {
+    body = `<div class="filters">${chips}</div><div id="sjQuiz"></div>`;
+  }
+  return `<div class="wrap"><h1>🀄 사자성어</h1>
+    <p class="sub">사자성어를 보고 그 뜻을 영어로 설명하는 공부예요. 목록에서 영어 설명을 익히고, 직접 설명해 보고, 퀴즈로 확인하세요. 외운 것 ${known} / ${total}</p>
+    <div class="tabs">${tabs.map(([k, n]) => `<button data-sjtab="${k}" class="${SJ.tab === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+    ${body}${D.saja.length ? '' : '<div class="empty">사자성어를 준비하고 있어요</div>'}</div>`;
+}
+// 퀴즈: 영어 설명 → 사자성어 / 사자성어 → 비슷한 영어 표현
+function sjQuizStart(mode) {
+  const pool = sjList().filter((x) => mode === 'eq' ? (x.equivalent || []).length : true);
+  SJ.qz = { mode, items: shuffle(pool).slice(0, 10).map((x) => x.id), i: 0, score: 0, picked: null, choices: [] };
+  sjQuizMake(); sjQuizRender();
+}
+function sjQuizMake() {
+  const q = SJ.qz, it = D.saja.find((x) => x.id === q.items[q.i]); if (!it) return;
+  const others = shuffle(D.saja.filter((x) => x.id !== it.id && (q.mode !== 'eq' || (x.equivalent || []).length))).slice(0, 3);
+  q.choices = shuffle([it, ...others]).map((x) => x.id); q.picked = null;
+}
+function sjQuizRender() {
+  const box = $('#sjQuiz'); if (!box) return;
+  const q = SJ.qz;
+  const head = `<div class="rp-setup"><span>문제</span><div class="seg">
+      <button data-sjq="explain" class="${q && q.mode === 'explain' ? 'on' : ''}">영어 설명 → 사자성어</button>
+      <button data-sjq="eq" class="${q && q.mode === 'eq' ? 'on' : ''}">사자성어 → 영어 속담</button></div><span class="rp-hint">숫자키 1~4 · Enter 다음</span></div>`;
+  if (!q) { box.innerHTML = head + '<div class="rp-stage"><div class="rp-hint">위에서 문제 종류를 고르면 10문제가 나와요.</div></div>'; return; }
+  if (q.i >= q.items.length) { box.innerHTML = head + `<div class="rp-stage"><div class="rp-ko">${q.score} / ${q.items.length} 정답</div><button class="btn primary" data-sjq="${q.mode}">⟳ 새 문제</button></div>`; return; }
+  const it = D.saja.find((x) => x.id === q.items[q.i]);
+  const label = (x) => q.mode === 'eq' ? x.equivalent[0].en : `${x.hangul} ${x.hanja || ''}`;
+  box.innerHTML = head + `<div class="fc-count">${q.i + 1} / ${q.items.length} · 정답 ${q.score}</div>
+    <div class="rp-stage" style="text-align:center">
+      ${q.mode === 'eq' ? `<div class="sj-big">${esc(it.hangul)}</div><div class="rp-hint">${esc(it.ko)}</div>` : `<div class="ex-en" style="font-size:17px">${esc(it.explain)}</div><button class="tool" data-sjp="${esc(it.id)}:exp">🔊 듣기</button>`}
+      <div class="qz-choices">${q.choices.map((cid, n) => { const c = D.saja.find((x) => x.id === cid);
+        const cls = q.picked == null ? '' : cid === it.id ? 'right' : cid === q.picked ? 'wrong' : 'dim';
+        return `<button class="qz-opt ${cls}" data-sjpick="${esc(cid)}"><b>${n + 1}</b> ${esc(label(c))}</button>`; }).join('')}</div>
+      ${q.picked != null ? `<div class="qz-after">${q.picked === it.id ? '⭕ 정답!' : '❌ 정답은 초록색'} · <b>${esc(it.hangul)}</b> — ${esc(it.explain)}
+        <div style="margin-top:10px"><button class="btn primary" data-sjq="next">${q.i + 1 < q.items.length ? '다음 →' : '결과 보기'}</button></div></div>` : ''}
+    </div>`;
+}
+function sjPlay(spec) {
+  const [id, what] = spec.split(':');
+  const it = D.saja.find((x) => x.id === id); if (!it) return;
+  stopAll();
+  if (what === 'exp') return playClip(it.audio, it.explain);
+  if (what === 'lit') return playClip(it.literalAudio, it.literal);
+  const arr = what.startsWith('eq') ? it.equivalent : it.examples, e = arr && arr[Number(what.slice(2))];
+  if (e) playClip(e.audio, e.en);
+}
+function renderSideSaja() {
+  $('#sideList').innerHTML = `<div class="side-group"><div class="side-group-title"><span>🀄 주제</span><span>${D.saja.filter(jKnown).length}/${D.saja.length}</span></div>
+    ${[['all', '전체'], ...SJ_CATS.map((c) => [c, c])].map(([k, n]) => { const list = k === 'all' ? D.saja : D.saja.filter((x) => x.cat === k); return list.length ? `<button class="side-item ${SJ.cat === k ? 'on' : ''}" data-sjcat="${esc(k)}">
+      <span class="t">${esc(n)}</span><span class="ck">${list.filter(jKnown).length}/${list.length}</span></button>` : ''; }).join('')}</div>`;
+}
+
 // ================= 💯 천 문장 구문 =================
 const SS = { chunk: true, onlyUnknown: false };
 const sKey = (u, i) => `S:${u.id}:${i}`;
@@ -1496,6 +1614,7 @@ function render() {
   else if (S.view === 'review') main.innerHTML = viewReview();
   else if (S.view === 'words') main.innerHTML = viewWords();
   else if (S.view === 'deck') main.innerHTML = viewDeck();
+  else if (S.view === 'saja') main.innerHTML = viewSaja();
   else if (S.view === 'describe') main.innerHTML = viewDescribe();
   else if (S.view === 'xles') main.innerHTML = viewDescribeLesson();
   else if (S.view === 'sents') main.innerHTML = viewSents();
@@ -1513,6 +1632,7 @@ function render() {
   if ($('#fcBox')) fcRender(false);
   if ($('#qzBox')) qzRender();
   if ($('#gxBox')) gxRender();
+  if ($('#sjQuiz')) sjQuizRender();
   document.querySelectorAll('#nav button').forEach((b) => {
     const v = b.dataset.view;
     b.classList.toggle('on', v === S.view || (S.view === 'deck' && v === 'words') || ({ gunit: 'grammar', rpass: 'reading', wtask: 'writing', sunit: 'sents', xles: 'describe' }[S.view] === v) || (S.view === 'lesson' && ((v === 'levels' && S.sideMode === 'level') || (v === 'themes' && S.sideMode === 'theme'))));
@@ -1549,7 +1669,7 @@ async function playSequence(items, { shadow = false } = {}) {
 
 // ================= 이벤트 =================
 document.addEventListener('click', async (e) => {
-  const t = e.target.closest('button, a, input[data-fc], [data-play-line], [data-play-phrase], [data-rvplay], [data-wtoggle], [data-fc], [data-rs], .idiom-mark');
+  const t = e.target.closest('button, a, input[data-fc], [data-play-line], [data-play-phrase], [data-rvplay], [data-wtoggle], [data-fc], [data-rs], [data-sjopen], .idiom-mark');
   if (!t) { hidePop(); return; }
   const ds = t.dataset;
   const l = S.lessonId && lessonById(S.lessonId);
@@ -1565,12 +1685,44 @@ document.addEventListener('click', async (e) => {
     if (ds.view === 'words') S.sideMode = 'words';
     if (ds.view === 'sents') { S.sideMode = 'sents'; S.cornerId = null; }
     if (ds.view === 'describe') { S.sideMode = 'desc'; S.cornerId = null; }
+    if (ds.view === 'saja') S.sideMode = 'saja';
     if (ds.view === 'grammar') { S.sideMode = 'gunit'; S.cornerId = null; }
     if (ds.view === 'reading') { S.sideMode = 'rpass'; S.cornerId = null; }
     if (ds.view === 'writing') { S.sideMode = 'wtask'; S.cornerId = null; }
     render(); $('#main').scrollTop = 0; return;
   }
   // ---- 문법·독해·작문 ----
+  // ---- 사자성어 ----
+  if (ds.sjtab) { stopAll(); SJ.tab = ds.sjtab; rerender(); return; }
+  if (ds.sjcat) { SJ.cat = ds.sjcat; SJ.queue = []; SJ.qz = null; if (S.view !== 'saja') { S.view = 'saja'; render(); } else rerender(); return; }
+  if (ds.sjopen) { if (SJ.open.has(ds.sjopen)) SJ.open.delete(ds.sjopen); else SJ.open.add(ds.sjopen); rerender(); return; }
+  if (ds.sjp) { sjPlay(ds.sjp); return; }
+  if (ds.sjq) { if (ds.sjq === 'next') { if (SJ.qz && SJ.qz.picked != null) { SJ.qz.i++; sjQuizMake(); sjQuizRender(); } } else sjQuizStart(ds.sjq); return; }
+  if (ds.sjpick) {
+    const q = SJ.qz; if (!q || q.picked != null) return;
+    q.picked = ds.sjpick; const it = D.saja.find((x) => x.id === q.items[q.i]);
+    if (q.picked === it.id) q.score++;
+    sjQuizRender(); stopAll(); if (q.mode === 'eq') playClip(it.equivalent[0].audio, it.equivalent[0].en); else playClip(it.audio, it.explain);
+    return;
+  }
+  if (ds.sjact) {
+    const it = D.saja.find((x) => x.id === SJ.queue[SJ.qi]); if (!it) return;
+    if (ds.sjact === 'hint') { SJ.hint = !SJ.hint; rerender(); return; }
+    if (ds.sjact === 'reveal') { SJ.reveal = !SJ.reveal; rerender(); if (SJ.reveal) { stopAll(); playClip(it.audio, it.explain); } return; }
+    if (ds.sjact === 'myrec') { const u = recordings['SJ:' + it.id]; if (u) { stopAll(); playUrl(u); } return; }
+    if (ds.sjact === 'ok' || ds.sjact === 'again') {
+      if (ds.sjact === 'ok') setKnown(jKey(it), true); else SJ.queue.push(it.id);
+      SJ.qi = (SJ.qi + 1) % SJ.queue.length; SJ.reveal = false; SJ.hint = false; stopAll(); rerender(); renderSide(); return;
+    }
+    if (ds.sjact === 'rec') {
+      const key = 'SJ:' + it.id;
+      if (rec) { stopRecording(); return; }
+      stopAll(); playToken++;
+      try { t.textContent = '⏺ 녹음 중… (누르면 멈춤)'; setNow('🎙 녹음 중…'); const auto = setTimeout(stopRecording, 60000); await startRecording(key); clearTimeout(auto); setNow(''); rerender(); await playUrl(recordings[key]); }
+      catch { t.textContent = '⚠️ 마이크 없음'; }
+      return;
+    }
+  }
   if (ds.xles) { openCorner('xles', ds.xles); return; }
   if (ds.xmodel != null) {
     const l = D.describe.find((x) => x.id === S.cornerId), m = l && (l.allModels || l.models)[Number(ds.xmodel)];
@@ -1763,6 +1915,8 @@ document.addEventListener('input', (e) => {
     rerender();
     const inp = $('#idSearch'); inp.focus(); inp.setSelectionRange(pos, pos);
   }
+  if (e.target.id === 'sjDraft') { store.sjdraft ||= {}; store.sjdraft[SJ.queue[SJ.qi]] = e.target.value; save(); }
+  if (e.target.id === 'sjSearch') { SJ.q = e.target.value; const pos = e.target.selectionStart; rerender(); const inp = $('#sjSearch'); inp.focus(); inp.setSelectionRange(pos, pos); }
   if (e.target.dataset.xdraft) { store.xdraft ||= {}; store.xdraft[e.target.dataset.xdraft] = e.target.value; save(); }
   if (e.target.id === 'wDraft') {
     store.wdraft ||= {}; store.wdraft[S.cornerId] = e.target.value; save();
@@ -1779,6 +1933,7 @@ document.addEventListener('input', (e) => {
   }
 });
 document.addEventListener('change', (e) => {
+  if (e.target.id === 'sjHideKo') { SJ.hideKo = e.target.checked; rerender(); }
   if (e.target.id === 'sChunk') { SS.chunk = e.target.checked; rerender(); }
   if (e.target.id === 'sOnly') { SS.onlyUnknown = e.target.checked; if (TY.src?.startsWith('sunit:')) TY.phase = 'setup'; rerender(); }
   if (e.target.id === 'readKo') { store.readKo = e.target.checked; save(); }
@@ -1840,6 +1995,12 @@ document.addEventListener('keydown', (e) => {
     const it = GX.items[GX.idx];
     if (it && it.type === 'choice' && GX.phase === 'q' && /^[1-9]$/.test(e.key) && it.options[Number(e.key) - 1] != null) { e.preventDefault(); gxAction('pick-' + (Number(e.key) - 1)); }
     else if (e.key === 'Enter') { e.preventDefault(); GX.phase === 'q' ? gxAction('check') : gxNext(); }
+  }
+  // 사자성어 퀴즈: 1~4 · Enter
+  if (S.view === 'saja' && SJ.tab === 'quiz' && SJ.qz && $('#sjQuiz')) {
+    const q = SJ.qz;
+    if (/^[1-4]$/.test(e.key) && q.picked == null && q.choices[Number(e.key) - 1]) { e.preventDefault(); document.querySelector(`[data-sjpick="${CSS.escape(q.choices[Number(e.key) - 1])}"]`)?.click(); }
+    else if (e.key === 'Enter' && q.picked != null) { e.preventDefault(); q.i++; sjQuizMake(); sjQuizRender(); }
   }
   // 퀴즈: 1~4 선택 · Enter 다음
   if (S.view === 'deck' && S.dtab === 'quiz' && $('#qzBox')) {
