@@ -1409,6 +1409,9 @@ function sjDetail(it) {
     ${(it.equivalent || []).length ? `<div class="gmore-h" style="margin-top:8px">🇬🇧 비슷한 영어 표현</div>${it.equivalent.map((e, i) => `<div class="ex"><button class="play" data-sjp="${esc(it.id)}:eq${i}">▶</button><div><div class="ex-en">${esc(e.en)}</div><div class="ex-ko">${esc(e.ko || '')}${e.note ? ' · ' + esc(e.note) : ''}</div></div></div>`).join('')}` : ''}
     <div class="gmore-h" style="margin-top:8px">💬 이런 상황에 써요</div>
     ${(it.examples || []).map((e, i) => `<div class="ex"><button class="play" data-sjp="${esc(it.id)}:ex${i}">▶</button><div><div class="ex-en">${esc(e.en)}</div><div class="ex-ko">${esc(e.ko || '')}</div></div></div>`).join('')}
+    ${(it.moreExamples || []).map((e, i) => `<div class="ex"><button class="play" data-sjp="${esc(it.id)}:mx${i}">▶</button><div><div class="ex-en">${esc(e.en)}</div><div class="ex-ko">${esc(e.ko || '')}</div></div></div>`).join('')}
+    ${(it.dialogue || []).length ? `<div class="gmore-h" style="margin-top:10px">🗨 대화 속에서 설명하기 <button class="tool" data-sjdlg="${esc(it.id)}">▶ 대화 듣기</button></div>
+      <div class="gdlg">${it.dialogue.map((x, xi) => `<div class="gdl ${x.s === 'B' ? 'b' : ''}" data-sjdl="${esc(it.id)}-${xi}"><span class="gwho">${x.s === 'A' ? '나' : '친구'}</span><div class="ex"><button class="play" data-sjp="${esc(it.id)}:dl${xi}">▶</button><div><div class="ex-en">${esc(x.en)}</div><div class="ex-ko">${esc(x.ko || '')}</div></div></div></div>`).join('')}</div>` : ''}
     ${(it.keywords || []).length ? `<div class="wstruct">${it.keywords.map((k) => `<span class="chip">🔑 ${esc(k)}</span>`).join(' ')}</div>` : ''}
     ${it.tip ? `<div class="note" style="margin-top:6px">💡 ${esc(it.tip)}</div>` : ''}
   </div>`;
@@ -1503,7 +1506,7 @@ function sjPlay(spec) {
   stopAll();
   if (what === 'exp') return playClip(it.audio, it.explain);
   if (what === 'lit') return playClip(it.literalAudio, it.literal);
-  const arr = what.startsWith('eq') ? it.equivalent : it.examples, e = arr && arr[Number(what.slice(2))];
+  const arr = { eq: it.equivalent, ex: it.examples, mx: it.moreExamples, dl: it.dialogue }[what.slice(0, 2)], e = arr && arr[Number(what.slice(2))];
   if (e) playClip(e.audio, e.en);
 }
 function renderSideSaja() {
@@ -1697,6 +1700,7 @@ document.addEventListener('click', async (e) => {
   if (ds.sjcat) { SJ.cat = ds.sjcat; SJ.queue = []; SJ.qz = null; if (S.view !== 'saja') { S.view = 'saja'; render(); } else rerender(); return; }
   if (ds.sjopen) { if (SJ.open.has(ds.sjopen)) SJ.open.delete(ds.sjopen); else SJ.open.add(ds.sjopen); rerender(); return; }
   if (ds.sjp) { sjPlay(ds.sjp); return; }
+  if (ds.sjdlg) { const it = D.saja.find((x) => x.id === ds.sjdlg); if (it) playSequence(it.dialogue.map((x, xi) => ({ ...x, row: () => document.querySelector(`[data-sjdl="${CSS.escape(it.id + '-' + xi)}"]`) }))); return; }
   if (ds.sjq) { if (ds.sjq === 'next') { if (SJ.qz && SJ.qz.picked != null) { SJ.qz.i++; sjQuizMake(); sjQuizRender(); } } else sjQuizStart(ds.sjq); return; }
   if (ds.sjpick) {
     const q = SJ.qz; if (!q || q.picked != null) return;

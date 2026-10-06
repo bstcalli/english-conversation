@@ -1,6 +1,6 @@
 // 휴대폰 웹 버전용 서비스 워커
 // 화면 파일·데이터는 새 버전을 먼저 받고(없으면 저장본), 음성은 한 번 들은 것을 저장해 두고 다시 씀
-const VERSION = '20261006095039';
+const VERSION = '20261006095951';
 const SHELL = ['./', 'index.html', 'app.js', 'style.css', 'data.json', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {

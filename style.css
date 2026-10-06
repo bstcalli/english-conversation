@@ -512,3 +512,5 @@ button.card:hover { border-color: var(--accent); }
 @media (max-width: 760px) { .sj-big { font-size: 34px; } .sj-ko { min-width: 0; } }
 /* 긴 재생 문구가 화면 폭을 늘리지 않게 */
 .player-bar { min-width: 0; overflow: hidden; }
+
+.gwho { width: auto; min-width: 26px; font-size: 12px; }
